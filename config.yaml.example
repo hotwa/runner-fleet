@@ -24,3 +24,4 @@ runners:
     # job_docker_backend: dind   # 默认 dind；可选 host-socket、none
     # dind_host: runner-dind     # 仅 job_docker_backend=dind 时有效
     # volume_host_path: /absolute/path/on/host/to/runners   # Manager 在容器内时必填，为宿主机上 runners 目录的绝对路径
+    # 注意：这里必须填写宿主机文件系统路径，而不是 Manager 容器内看到的 /app/... 路径

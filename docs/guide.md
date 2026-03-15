@@ -86,6 +86,13 @@ runners:
 
 Runner image: same name as Manager with `-runner` tag (production: use a version tag e.g. v1.0.0-runner; dev: main-runner), or build locally: `docker build -f Dockerfile.runner -t ghcr.io/soulteary/runner-fleet:v1.0.0-runner .`. Manager must use host Docker (mount `docker.sock`), not DinD via `DOCKER_HOST`; in Compose use `group_add` for host docker GID or `user: "0:0"`. Runner names are normalized to container names; duplicates after mapping will conflict.
 
+### Important notes
+
+- `.env` overrides `config/config.yaml`. If both exist, verify that `RUNNER_IMAGE`, `JOB_DOCKER_BACKEND`, `VOLUME_HOST_PATH`, `CONTAINER_MODE`, and `RUNNERS_BASE_PATH` are not overriding the values you expect.
+- `DOCKER_GID` must match the actual group id of `/var/run/docker.sock` on the host. Example: `stat -c '%g' /var/run/docker.sock`.
+- When moving an existing runner between machines, copy the full runner install directory, not only `.runner` / `.credentials`. Missing helper scripts or `externals/` can make `run.sh` exit immediately.
+- In container mode, manager/UI process state can lag or misreport `running`. Final verification should use GitHub runner online state and the runner `_diag` logs such as `Session created` and `Listening for Jobs`.
+
 ### Troubleshooting
 
 - **Runner won't start after compose down**: Run `docker network create runner-net` once. If it still fails, use "Start" in the UI to recreate, or `docker rm -f github-runner-<name>` then "Start".

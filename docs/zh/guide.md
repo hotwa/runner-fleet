@@ -86,6 +86,13 @@ runners:
 
 Runner 镜像：同 Manager 镜像名、tag 带 `-runner`（生产建议用版本号如 v1.0.0-runner，开发可用 main-runner），或本地 `docker build -f Dockerfile.runner -t ghcr.io/soulteary/runner-fleet:v1.0.0-runner .`。Manager 必须用宿主机 Docker（挂载 `docker.sock`），不可把 `DOCKER_HOST` 设为 DinD；Compose 中需 `group_add` 宿主机 docker GID 或 `user: "0:0"`。Runner 名称会规范为容器名，映射后重名会冲突。
 
+### 重要说明
+
+- `.env` 会覆盖 `config/config.yaml`。如果两者同时存在，请重点检查 `RUNNER_IMAGE`、`JOB_DOCKER_BACKEND`、`VOLUME_HOST_PATH`、`CONTAINER_MODE`、`RUNNERS_BASE_PATH` 是否把你期望的配置冲掉了。
+- `DOCKER_GID` 必须与宿主机 `/var/run/docker.sock` 的实际组 ID 一致，例如：`stat -c '%g' /var/run/docker.sock`。
+- 跨机器迁移已有 runner 时，必须复制完整的 runner 安装目录，不要只复制 `.runner` / `.credentials`。缺少 helper 脚本或 `externals/` 时，`run.sh` 可能会直接退出。
+- 容器模式下，管理界面或 API 对 `running` 的判断可能滞后或误判。最终请以 GitHub 上 runner 是否 online，以及 runner `_diag` 日志中的 `Session created`、`Listening for Jobs` 为准。
+
 ### 排障
 
 - **compose down 后 Runner 无法启动**：首次执行 `docker network create runner-net`。已出问题时界面点该 Runner「启动」重建，或 `docker rm -f github-runner-<名称>` 后再点「启动」。
