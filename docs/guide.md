@@ -92,6 +92,30 @@ Runner image: same name as Manager with `-runner` tag (production: use a version
 - **Running as root**: Mounted dirs must be writable by the process user; for root set `RUNNER_ALLOW_RUNASROOT=1`.
 - **Old runner image**: `docker rm -f github-runner-<name>`, then "Start" in the UI to recreate.
 - **status=unknown**: Check the probe in the detail popup; try "Start/Stop" to self-heal.
+- **Runner shows offline after reboot**:
+  1. Check directory permissions: `ls -la runners/` should show UID 1001
+  2. Fix permissions: `sudo chown -R 1001:1001 runners/`
+  3. Restart runner container: `docker restart github-runner-<name>`
+  4. Or run the init script: `./scripts/init.sh`
+
+### Auto-start on boot (systemd)
+
+To ensure runners automatically reconnect after system reboot, install the systemd service:
+
+```bash
+# 1. Edit scripts/runner-fleet.service and set PROJECT_DIR to your path
+# 2. Install the service
+sudo cp scripts/runner-fleet.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable runner-fleet
+sudo systemctl start runner-fleet
+```
+
+The service will:
+1. Fix directory permissions (UID 1001) before starting
+2. Create `runner-net` network if missing
+3. Start all containers with `docker compose up -d`
+4. Runner containers have `--restart=unless-stopped` (v1.1.0+)
 
 ### Build images locally
 

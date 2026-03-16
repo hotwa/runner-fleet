@@ -39,6 +39,45 @@ docker compose up -d
 
 Open http://localhost:8080. The default image tag is the stable release (e.g. v1.0.0). For more options (docker run, DinD, container mode, using `main` or other tags) see the [User Guide](docs/guide.md). Health: `GET /health`; version: `GET /version`.
 
+## Auto-start on boot (systemd)
+
+To ensure runners automatically reconnect to GitHub after system reboot:
+
+**Option 1: Using the provided init script**
+
+```bash
+# Run after reboot or before starting
+./scripts/init.sh
+
+# This will:
+# 1. Create runner-net network if missing
+# 2. Fix directory permissions (UID 1001)
+# 3. Ensure all runner directories have correct ownership
+```
+
+**Option 2: Install as systemd service (recommended for production)**
+
+```bash
+# Edit scripts/runner-fleet.service and set PROJECT_DIR to your path
+sudo cp scripts/runner-fleet.service /etc/systemd/system/
+
+# Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable runner-fleet
+sudo systemctl start runner-fleet
+
+# Check status
+sudo systemctl status runner-fleet
+```
+
+**Why runners go offline after reboot:**
+
+1. **Container restart policy**: Runner containers need `--restart=unless-stopped` (added in v1.1.0+)
+2. **Directory permissions**: Runner must write to `_diag/` for logs; if UID mismatch, it fails silently
+3. **Network missing**: `runner-net` must exist before containers start
+
+The systemd service handles all three issues automatically.
+
 ## Use cases
 
 - **Personal / team**: One machine as self-hosted runners for multiple repos or orgs; manage via Web UI, no need to remember CLI.

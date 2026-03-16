@@ -1,0 +1,28 @@
+[Unit]
+Description=Runner Fleet - GitHub Actions Runner Manager
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# 设置项目目录路径
+Environment=PROJECT_DIR=/home/zly/runner-fleet
+Environment=RUNNER_UID=1001
+Environment=RUNNER_GID=1001
+
+# 修复目录权限
+ExecStartPre=/bin/bash -c 'chown -R ${RUNNER_UID}:${RUNNER_GID} ${PROJECT_DIR}/config ${PROJECT_DIR}/runners 2>/dev/null || true'
+
+# 确保 runner-net 网络存在
+ExecStartPre=/usr/bin/docker network inspect runner-net 2>/dev/null || /usr/bin/docker network create runner-net
+
+# 启动服务
+ExecStart=/usr/bin/docker compose -f ${PROJECT_DIR}/docker-compose.yml up -d
+
+# 停止服务
+ExecStop=/usr/bin/docker compose -f ${PROJECT_DIR}/docker-compose.yml down
+
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
