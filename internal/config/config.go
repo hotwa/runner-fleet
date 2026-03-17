@@ -106,6 +106,16 @@ func applyEnvOverrides(c *Config) {
 		}
 		c.Runners.ContainerDNS = dnsList
 	}
+	// 代理配置：支持通过环境变量设置 Runner 容器的代理
+	if v := strings.TrimSpace(os.Getenv("HTTP_PROXY")); v != "" {
+		c.Runners.HTTPProxy = v
+	}
+	if v := strings.TrimSpace(os.Getenv("HTTPS_PROXY")); v != "" {
+		c.Runners.HTTPSProxy = v
+	}
+	if v := strings.TrimSpace(os.Getenv("NO_PROXY")); v != "" {
+		c.Runners.NoProxy = v
+	}
 	// 容器模式且未设 container_image 时，优先从 MANAGER_IMAGE 推导
 	if c.Runners.ContainerMode && strings.TrimSpace(c.Runners.ContainerImage) == "" {
 		if derived := containerImageFromManagerImage(); derived != "" {
@@ -144,6 +154,10 @@ type RunnersConfig struct {
 	VolumeHostPath   string `yaml:"volume_host_path"`   // 容器模式下宿主机上 runners 根路径，供 docker create -v 使用；Manager 自身在容器内时必填（如 /data/runners）
 	// DNS 服务器列表，用于避免 DNS 污染问题（如 8.8.8.8,1.1.1.1）
 	ContainerDNS []string `yaml:"container_dns"` // 容器 DNS 服务器列表，为空时使用 Docker 默认
+	// 代理配置：Runner 容器内 Job 流量走代理
+	HTTPProxy  string `yaml:"http_proxy"`  // HTTP 代理地址，如 http://host.docker.internal:11888
+	HTTPSProxy string `yaml:"https_proxy"` // HTTPS 代理地址，如 http://host.docker.internal:11888
+	NoProxy    string `yaml:"no_proxy"`    // 不走代理的地址，如 localhost,127.0.0.1,.example.com
 }
 
 // RunnerItem 单个 Runner 配置

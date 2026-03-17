@@ -262,6 +262,31 @@ func StartRunnerContainer(ctx context.Context, cfg *config.Config, runnerName, i
 			createArgs = append(createArgs, "--dns", dns)
 		}
 	}
+	// 添加代理环境变量配置
+	// 如果代理地址包含 host.docker.internal，自动添加 --add-host 以支持 Linux
+	needHostDockerInternal := false
+	if cfg.Runners.HTTPProxy != "" {
+		createArgs = append(createArgs, "-e", "HTTP_PROXY="+cfg.Runners.HTTPProxy)
+		createArgs = append(createArgs, "-e", "http_proxy="+cfg.Runners.HTTPProxy)
+		if strings.Contains(cfg.Runners.HTTPProxy, "host.docker.internal") {
+			needHostDockerInternal = true
+		}
+	}
+	if cfg.Runners.HTTPSProxy != "" {
+		createArgs = append(createArgs, "-e", "HTTPS_PROXY="+cfg.Runners.HTTPSProxy)
+		createArgs = append(createArgs, "-e", "https_proxy="+cfg.Runners.HTTPSProxy)
+		if strings.Contains(cfg.Runners.HTTPSProxy, "host.docker.internal") {
+			needHostDockerInternal = true
+		}
+	}
+	if cfg.Runners.NoProxy != "" {
+		createArgs = append(createArgs, "-e", "NO_PROXY="+cfg.Runners.NoProxy)
+		createArgs = append(createArgs, "-e", "no_proxy="+cfg.Runners.NoProxy)
+	}
+	// Linux 上需要添加 --add-host 以支持 host.docker.internal
+	if needHostDockerInternal {
+		createArgs = append(createArgs, "--add-host", "host.docker.internal:host-gateway")
+	}
 	switch jobBackend {
 	case "dind":
 		createArgs = append(createArgs, "-e", "DOCKER_HOST=tcp://"+dindHost+":2375")

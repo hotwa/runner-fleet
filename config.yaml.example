@@ -24,3 +24,8 @@ runners:
     # job_docker_backend: dind   # 默认 dind；可选 host-socket、none
     # dind_host: runner-dind     # 仅 job_docker_backend=dind 时有效
     # volume_host_path: /absolute/path/on/host/to/runners   # Manager 在容器内时必填，为宿主机上 runners 目录的绝对路径
+    #
+    # 代理配置：Runner 容器内 Job 流量走代理
+    # http_proxy: http://host.docker.internal:11888    # HTTP 代理，使用 host.docker.internal 访问宿主机
+    # https_proxy: http://host.docker.internal:11888   # HTTPS 代理
+    # no_proxy: localhost,127.0.0.1,.example.com       # 不走代理的地址
