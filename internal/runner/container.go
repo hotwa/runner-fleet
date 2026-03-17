@@ -253,6 +253,8 @@ func StartRunnerContainer(ctx context.Context, cfg *config.Config, runnerName, i
 		"-v", mountSrc + ":/runner",
 		"--network", network,
 		"--restart", "unless-stopped",
+		"--stop-timeout", "30",
+		"-e", "RUNNER_MANUALLY_TRAP_SIG=1",
 	}
 	switch jobBackend {
 	case "dind":
