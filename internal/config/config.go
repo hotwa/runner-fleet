@@ -20,6 +20,16 @@ var runnerContainerNameSanitizeRe = regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
 // DefaultRunnerImageRepo 默认 Runner 镜像仓库名，与 Manager 同仓库
 const DefaultRunnerImageRepo = "ghcr.io/soulteary/runner-fleet"
 
+// DefaultContainerDNS 默认 DNS 服务器列表（Google + Cloudflare，支持 DoH，无污染）
+// Google: 8.8.8.8, 8.8.4.4 (支持 DNS-over-HTTPS)
+// Cloudflare: 1.1.1.1, 1.0.0.1 (支持 DNS-over-HTTPS, DNS-over-TLS)
+var DefaultContainerDNS = []string{
+	"8.8.8.8",   // Google Primary DNS (支持 DoH: https://dns.google/dns-query)
+	"8.8.4.4",   // Google Secondary DNS
+	"1.1.1.1",   // Cloudflare Primary DNS (支持 DoH: https://cloudflare-dns.com/dns-query)
+	"1.0.0.1",   // Cloudflare Secondary DNS
+}
+
 // DefaultRunnerContainerImage 返回默认 Runner 容器镜像（未配置 container_image 时使用）。
 // Tag 取自环境变量 FLEET_IMAGE_TAG，未设置时为 v1.0.0；镜像名为 {repo}:{tag}-runner。
 func DefaultRunnerContainerImage() string {
@@ -88,6 +98,14 @@ func applyEnvOverrides(c *Config) {
 	if v := strings.TrimSpace(os.Getenv("RUNNERS_VOLUME_HOST_PATH")); v != "" {
 		c.Runners.VolumeHostPath = v
 	}
+	// DNS 配置：支持逗号分隔的 DNS 服务器列表（如 CONTAINER_DNS=8.8.8.8,1.1.1.1）
+	if v := strings.TrimSpace(os.Getenv("CONTAINER_DNS")); v != "" {
+		dnsList := strings.Split(v, ",")
+		for i, dns := range dnsList {
+			dnsList[i] = strings.TrimSpace(dns)
+		}
+		c.Runners.ContainerDNS = dnsList
+	}
 	// 容器模式且未设 container_image 时，优先从 MANAGER_IMAGE 推导
 	if c.Runners.ContainerMode && strings.TrimSpace(c.Runners.ContainerImage) == "" {
 		if derived := containerImageFromManagerImage(); derived != "" {
@@ -124,6 +142,8 @@ type RunnersConfig struct {
 	JobDockerBackend string `yaml:"job_docker_backend"` // dind | host-socket | none，默认 dind
 	DindHost         string `yaml:"dind_host"`          // 仅 job_docker_backend=dind 时有效，DinD 主机名，默认 runner-dind
 	VolumeHostPath   string `yaml:"volume_host_path"`   // 容器模式下宿主机上 runners 根路径，供 docker create -v 使用；Manager 自身在容器内时必填（如 /data/runners）
+	// DNS 服务器列表，用于避免 DNS 污染问题（如 8.8.8.8,1.1.1.1）
+	ContainerDNS []string `yaml:"container_dns"` // 容器 DNS 服务器列表，为空时使用 Docker 默认
 }
 
 // RunnerItem 单个 Runner 配置
@@ -161,6 +181,7 @@ func defaultConfig() *Config {
 			JobDockerBackend: "dind",
 			DindHost:         "runner-dind",
 			VolumeHostPath:   "",
+			ContainerDNS:     DefaultContainerDNS, // 默认使用无污染 DNS
 		},
 	}
 }
@@ -218,6 +239,10 @@ func Load(path string) (*Config, error) {
 	c.Runners.JobDockerBackend = jobBackend
 	if c.Runners.JobDockerBackend == "dind" && c.Runners.DindHost == "" {
 		c.Runners.DindHost = "runner-dind"
+	}
+	// 容器模式下默认使用无污染 DNS（Google + Cloudflare）
+	if c.Runners.ContainerMode && len(c.Runners.ContainerDNS) == 0 {
+		c.Runners.ContainerDNS = DefaultContainerDNS
 	}
 	applyEnvOverrides(&c)
 	if err := Validate(&c); err != nil {

@@ -256,6 +256,12 @@ func StartRunnerContainer(ctx context.Context, cfg *config.Config, runnerName, i
 		"--stop-timeout", "30",
 		"-e", "RUNNER_MANUALLY_TRAP_SIG=1",
 	}
+	// 添加 DNS 服务器配置（避免 DNS 污染）
+	for _, dns := range cfg.Runners.ContainerDNS {
+		if dns = strings.TrimSpace(dns); dns != "" {
+			createArgs = append(createArgs, "--dns", dns)
+		}
+	}
 	switch jobBackend {
 	case "dind":
 		createArgs = append(createArgs, "-e", "DOCKER_HOST=tcp://"+dindHost+":2375")
