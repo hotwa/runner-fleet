@@ -4,8 +4,10 @@ FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS builder
 WORKDIR /app
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
+ARG GOPROXY=https://proxy.golang.org,direct
 ENV HTTP_PROXY=${HTTP_PROXY}
 ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV GOPROXY=${GOPROXY}
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
@@ -29,9 +31,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl libicu74 libkrb5-3 liblttng-ust1 libssl3 zlib1g \
     && rm -rf /var/lib/apt/lists/*
 RUN install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+    && curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
     && chmod 644 /etc/apt/keyrings/docker.asc \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://mirrors.aliyun.com/docker-ce/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list \
     && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 

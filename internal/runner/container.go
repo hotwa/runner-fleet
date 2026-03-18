@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,18 +29,26 @@ type AgentStatus struct {
 	Running bool   `json:"running"`
 }
 
+// noProxyClient 是一个不使用代理的 HTTP 客户端，用于内部容器通信
+// 避免 HTTP_PROXY 环境变量干扰 Runner Agent 的状态查询
+var noProxyClient = &http.Client{
+	Timeout: 10 * time.Second,
+	Transport: &http.Transport{
+		Proxy: func(req *http.Request) (*url.URL, error) { return nil, nil }, // 禁用代理
+	},
+}
+
 // GetAgentStatus 请求 Runner 容器内 Agent 的 /status，超时 5 秒
 func GetAgentStatus(ctx context.Context, containerName string, port int) (*AgentStatus, error) {
 	if port <= 0 {
 		port = 8081
 	}
-	url := fmt.Sprintf("http://%s:%d/status", containerName, port)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	endpoint := fmt.Sprintf("http://%s:%d/status", containerName, port)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := noProxyClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -64,13 +73,12 @@ func CallAgentStart(ctx context.Context, containerName string, port int) error {
 	if port <= 0 {
 		port = 8081
 	}
-	url := fmt.Sprintf("http://%s:%d/start", containerName, port)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	endpoint := fmt.Sprintf("http://%s:%d/start", containerName, port)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
 	if err != nil {
 		return err
 	}
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := noProxyClient.Do(req)
 	if err != nil {
 		return err
 	}
