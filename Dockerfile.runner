@@ -13,6 +13,10 @@ FROM ubuntu:24.04
 LABEL org.opencontainers.image.title="Runner Fleet Runner" \
       org.opencontainers.image.description="GitHub Actions Runner 单实例容器，内含 Agent 供 Manager 控制"
 
+# APT 绕过环境代理，避免透明缓存导致索引 hash 不一致。
+RUN echo 'Acquire::http::Proxy "false";' > /etc/apt/apt.conf.d/99no-proxy \
+    && echo 'Acquire::https::Proxy "false";' >> /etc/apt/apt.conf.d/99no-proxy
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl libicu74 libkrb5-3 liblttng-ust1 libssl3 zlib1g \
     && rm -rf /var/lib/apt/lists/*
@@ -24,9 +28,15 @@ RUN install -m 0755 -d /etc/apt/keyrings \
     && rm -rf /var/lib/apt/lists/*
 
 # For GitHub Actions
-RUN apt-get update && apt install -y build-essential git gnupg
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential git gnupg sudo \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN groupadd -g 1001 app && useradd -r -u 1001 -g app -d /runner -s /bin/bash app
+RUN groupadd -g 1001 app \
+    && useradd -r -u 1001 -g app -d /runner -s /bin/bash app \
+    && usermod -aG sudo app \
+    && echo 'app ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-app \
+    && chmod 0440 /etc/sudoers.d/90-app
 RUN install -m 0755 -d /app && install -m 0755 -d /runner
 COPY --from=builder /app/runner-agent /app/runner-agent
 RUN chown app:app /app/runner-agent /runner

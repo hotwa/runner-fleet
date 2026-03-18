@@ -2,6 +2,10 @@
 ARG BUILDPLATFORM=linux/amd64
 FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS builder
 WORKDIR /app
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
@@ -14,6 +18,11 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "-X ma
 FROM ubuntu:24.04
 LABEL org.opencontainers.image.title="Runner Fleet Manager" \
       org.opencontainers.image.description="GitHub Actions Runner 管理服务"
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
 
 # Runner 依赖（libicu 等）；Docker CLI 供容器模式与 Job 内 docker 使用
 RUN apt-get update && apt-get install -y --no-install-recommends \
